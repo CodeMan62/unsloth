@@ -316,15 +316,21 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({
     if (message.status?.type !== "running") {
       return false;
     }
-    const lastIndex = message.parts.length - 1;
-    if (lastIndex < 0) {
+    if (message.parts.length === 0) {
       return false;
     }
-    const lastType = message.parts[lastIndex]?.type;
-    if (lastType !== "reasoning") {
+    const groupHasReasoning = message.parts
+      .slice(startIndex, endIndex + 1)
+      .some((part) => part.type === "reasoning");
+    if (!groupHasReasoning) {
       return false;
     }
-    return lastIndex >= startIndex && lastIndex <= endIndex;
+    // Tool-call parts can be emitted between reasoning deltas; ignore them
+    // so the reasoning pane keeps streaming while tools are active.
+    const trailingNonToolPart = message.parts
+      .slice(endIndex + 1)
+      .find((part) => part.type !== "tool-call");
+    return trailingNonToolPart === undefined;
   });
 
   const persistedDuration = useAuiState(({ message }) => {
